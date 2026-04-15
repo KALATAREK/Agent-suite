@@ -18,10 +18,12 @@ export default function LoginPage() {
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // 🔥 AUTO LOGIN
+  // 🔐 AUTO LOGIN
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) router.replace("/");
+    if (token) {
+      router.replace("/");
+    }
   }, [router]);
 
   // =========================
@@ -65,6 +67,7 @@ export default function LoginPage() {
         throw new Error("Invalid server response");
       }
 
+      // 🔐 TOKENS
       localStorage.setItem("token", data.access_token);
 
       if (data.refresh_token) {
@@ -77,7 +80,10 @@ export default function LoginPage() {
 
       router.replace("/");
     } catch (err: any) {
-      setError(err?.message || (isRegister ? "Register failed" : "Login failed"));
+      setError(
+        err?.message ||
+          (isRegister ? "Register failed" : "Login failed")
+      );
     } finally {
       setLoading(false);
     }
@@ -101,14 +107,22 @@ export default function LoginPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-white">
               AgentSuite
             </h1>
+
             <p className="mt-2 text-sm text-white/45">
-              {isRegister ? "Create your account" : "Sign in to your AI workspace"}
+              {isRegister
+                ? "Create your account"
+                : "Sign in to your AI workspace"}
             </p>
           </div>
 
-          {/* GOOGLE (fallback safe) */}
+          {/* 🔥 GOOGLE LOGIN */}
           <div className="mb-5 flex justify-center">
-            <GoogleLoginButton onSuccess={() => router.replace("/")} />
+            <GoogleLoginButton
+              onSuccess={() => {
+                // 🔐 jeśli komponent zapisuje token → redirect
+                router.replace("/");
+              }}
+            />
           </div>
 
           {/* DIVIDER */}
@@ -176,7 +190,9 @@ export default function LoginPage() {
 
           {/* TOGGLE */}
           <div className="mt-4 text-center text-sm text-white/40">
-            {isRegister ? "Already have an account?" : "No account yet?"}
+            {isRegister
+              ? "Already have an account?"
+              : "No account yet?"}
 
             <button
               onClick={() => {

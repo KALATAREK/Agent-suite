@@ -21,26 +21,50 @@ interface AutomatorData {
 
 export default function Page() {
   const [view, setView] = useState<View>("assistant");
-
-  // 🔥 SESSION STATE
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
-
-  // 🔥 REFRESH KEY
   const [refreshSessionsKey, setRefreshSessionsKey] = useState(0);
-
-  // 🔥 AUTOMATOR SHARED STATE
   const [automatorData, setAutomatorData] = useState<AutomatorData | null>(null);
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   const router = useRouter();
 
-  // 🔐 AUTH + INIT SESSION
+  // 🔐 AUTH + GOOGLE INIT
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      router.push("/login");
-      return;
+      setIsLoggedIn(false);
+
+      // 🔥 czekamy na Google script
+      const interval = setInterval(() => {
+        if (window.google) {
+          clearInterval(interval);
+
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+            callback: (response: any) => {
+              localStorage.setItem("token", response.credential);
+              setIsLoggedIn(true);
+            },
+          });
+
+          window.google.accounts.id.renderButton(
+            document.getElementById("google-btn"),
+            {
+              theme: "outline",
+              size: "large",
+              width: 280,
+            }
+          );
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
     }
+
+    // ✅ zalogowany
+    setIsLoggedIn(true);
 
     const existing = localStorage.getItem("session_id");
 
@@ -51,64 +75,73 @@ export default function Page() {
       localStorage.setItem("session_id", newId);
       setSelectedSessionId(newId);
     }
-  }, [router]);
+  }, []);
 
-  // 🔥 REFRESH SESSIONS
   const triggerRefreshSessions = () => {
     setRefreshSessionsKey((prev) => prev + 1);
   };
 
-  // 🔥 SELECT SESSION
   const handleSelectSession = (id: string) => {
     localStorage.setItem("session_id", id);
     setSelectedSessionId(id);
   };
 
-  // 🔥 CREATE SESSION
   const handleCreateSession = () => {
     const newId = `session-${Date.now()}`;
     localStorage.setItem("session_id", newId);
     setSelectedSessionId(newId);
-
-    // 🔥 refresh listy
     triggerRefreshSessions();
   };
 
+  // 🔥 LOADING
+  if (isLoggedIn === null) {
+    return <div className="text-white p-10">Loading...</div>;
+  }
+
+  // 🔥 LOGIN SCREEN (ZAMIAST /login)
+  if (!isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#05070f] text-white">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+          <h1 className="mb-6 text-center text-2xl font-bold">
+            Zaloguj się
+          </h1>
+
+          <div id="google-btn"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔥 NORMAL APP
   return (
     <div className="flex min-h-screen w-full bg-[#05070f] text-white">
 
-      {/* SIDEBAR */}
       <Sidebar
         current={view}
         onChange={setView}
         selectedSessionId={selectedSessionId}
         onSelectSession={handleSelectSession}
         onCreateSession={handleCreateSession}
-        refreshKey={refreshSessionsKey} // 🔥 KLUCZ
+        refreshKey={refreshSessionsKey}
       />
 
-      {/* MAIN */}
       <div className="flex flex-1 flex-col">
 
-        {/* TOPBAR */}
         <Topbar />
 
-        {/* CONTENT */}
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           <div className="mx-auto w-full max-w-7xl">
 
-            {/* ASSISTANT */}
             {view === "assistant" && (
               <AssistantChat
                 sessionId={selectedSessionId}
-                onMessageSent={triggerRefreshSessions} // 🔥 KLUCZ
+                onMessageSent={triggerRefreshSessions}
               />
             )}
 
-            {/* ANALYZER */}
             {view === "analyze" && <AnalyzerPanel />}
 
-            {/* AUTOMATOR */}
             {view === "automate" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AutomatorPanel mode="input" data={automatorData} onDataChange={setAutomatorData} />
