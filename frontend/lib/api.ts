@@ -1,4 +1,5 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const apiFetch = async (
   path: string,
@@ -6,11 +7,17 @@ export const apiFetch = async (
 ) => {
   const token = localStorage.getItem("token");
 
+  const isAuthRoute =
+    path.startsWith("/auth/login") ||
+    path.startsWith("/auth/register") ||
+    path.startsWith("/auth/google");
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
+      // 🔥 NIE dodajemy tokena przy loginie
+      ...(!isAuthRoute && token && { Authorization: `Bearer ${token}` }),
       ...(options.headers || {}),
     },
   });
